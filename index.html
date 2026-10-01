@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parts Assist v0.3</title>
 <style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;background:#f4f6f8;color:#17202a}.wrap{max-width:1050px;margin:auto;padding:28px}.card{background:white;border:1px solid #dfe4ea;border-radius:14px;padding:20px;margin:14px 0;box-shadow:0 2px 8px #0000000a}h1{margin:0 0 6px}.muted{color:#667085}.row{display:flex;gap:10px;flex-wrap:wrap}input,button{font:inherit;padding:12px;border-radius:9px;border:1px solid #cfd6dd}input{flex:1;min-width:260px}button{background:#17202a;color:#fff;cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2f6;margin:3px;font-size:13px}.warn{background:#fff5d6;border-color:#f0cf63}.result{padding:13px;border-top:1px solid #eee}.score{font-weight:700}.small{font-size:13px}</style></head>
-<body><div class="wrap"><h1>Parts Assist v0.3</h1><div class="muted">Free-form workshop request interpreter. It accepts any part description; catalogue-backed matches are shown only where test data exists.</div>
-<div class="card"><div class="row"><input id="q" value="n/s front brake wear lead" placeholder="e.g. n/s rear wear lead, boost pipe off intercooler, sump seal"><button id="go">Interpret & search</button></div><div class="small muted" style="margin-top:10px">UK position language: n/s = left, o/s = right.</div></div><div id="interpret"></div><div id="results"></div><div class="card"><b>Prototype rule:</b> terminology identifies concepts and candidates; it never invents an authoritative part number. PA numbers are synthetic.</div></div>
+<body><div class="wrap"><h1>Parts Assist v0.3</h1><div class="muted">Workshop-language search over publicly published Genuine Volvo Truck parts data. Not chassis-specific and not connected to IMPACT/Fusion.</div>
+<div class="card"><div class="row"><input id="q" value="n/s front brake wear lead" placeholder="e.g. n/s rear wear lead, boost pipe off intercooler, sump seal"><button id="go">Interpret & search</button></div><div class="small muted" style="margin-top:10px">UK position language: n/s = left, o/s = right.</div></div><div id="interpret"></div><div id="results"></div><div class="card"><b>Prototype rule:</b> terminology identifies concepts and candidates; it never invents an authoritative part number. Loaded Volvo numbers come from publicly published Volvo/dealer materials; fitment must still be verified by chassis/VIN in the authorised catalogue.</div></div>
 <script>
 const TERMS=[
 ["brake lining wear sensor","brakes",["brake wear sensor","pad wear sensor","brake pad wear sensor","wear sensor","wear lead","brake wear lead","pad wear lead"],0],
@@ -27,24 +27,37 @@ const TERMS=[
 ["pto","transmission",["power take off","pto unit"],0]
 ].map(x=>({canonical:x[0],system:x[1],aliases:x[2],ambiguous:!!x[3]}));
 const CAT=[
-["PA-1001","Brake lining wear sensor","brakes","front left",["wear lead","pad wear sensor","front","left"]],
-["PA-1002","Brake lining wear sensor","brakes","rear left",["wear lead","pad wear sensor","rear","left"]],
-["PA-1003","Brake lining wear sensor","brakes","front right",["wear lead","pad wear sensor","front","right"]],
-["PA-2001","Oil sump gasket","engine lubrication","engine lower",["sump seal","oil pan gasket"]],
-["PA-2101","Oil cooler seal","engine lubrication","oil cooler housing",["oil cooler seal","oil cooler gasket"]],
-["PA-3001","Charge air hose","intake/boost","turbo to charge-air cooler",["boost pipe","turbo pipe","intercooler"]],
-["PA-3002","Charge air hose","intake/boost","charge-air cooler to inlet",["boost pipe","intercooler pipe","inlet"]],
-["PA-4001","Automatic slack adjuster","air brakes","rear axle left",["slack adjuster","brake adjuster","rear","left"]],
-["PA-4101","Spring brake chamber","air brakes","rear axle left",["spring brake chamber","brake pot","rear","left"]],
-["PA-5001","Anti-roll bar link","suspension","front left",["drop link","stabiliser link","front","left"]],
-["PA-6001","Auxiliary drive belt","engine","front of engine",["aux belt","serpentine belt","accessory belt"]],
-["PA-7001","EGR cooler","emissions","engine exhaust recirculation",["egr cooler","exhaust gas cooler"]]
+["22058738","FH Rear Front Airbag","suspension","FH rear front",["airbag","air bag","air bellows","rear suspension"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["24062484","FH Rear Rear Airbag","suspension","FH rear rear",["airbag","air bag","air bellows","rear suspension"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["22058741","FH(4)/FM(4) Rear/Lift Airbag","suspension","rear/lift axle",["airbag","air bag","air bellows","lift axle"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["22052470","FH(4)/FM(4) Pusher Airbag","suspension","pusher axle",["airbag","air bag","air bellows","pusher"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["22058737","FH(4)/FM(4) Rear Airbag","suspension","rear axle",["airbag","air bag","air bellows","rear"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["22573233","FH/FM Classic/(4) Lift Airbag","suspension","lift axle",["airbag","air bag","air bellows","lift"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["23600767","FH(4)/FM(4) Pusher Airbag","suspension","pusher axle",["airbag","air bag","air bellows","pusher"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["23586675","FH/FM Pusher Airbag","suspension","pusher axle",["airbag","air bag","air bellows","pusher"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["21961374","FH/FM Classic Rear Airbag","suspension","rear axle",["airbag","air bag","air bellows","rear"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["21961451","FH/FM Classic Rear Airbag","suspension","rear axle",["airbag","air bag","air bellows","rear"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["21961456","FH/FM Classic Rear/Tag Airbag","suspension","rear/tag axle",["airbag","air bag","air bellows","tag"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["21961472","FH/FM Classic Front Airbag","suspension","front",["airbag","air bag","air bellows","front"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["21977973","FH/FM Classic Pusher Airbag","suspension","pusher axle",["airbag","air bag","air bellows","pusher"],"Volvo dealer Genuine Volvo Parts brochure 2024"],
+["21707132","Oil Filter","engine lubrication","engine",["oil filter","engine oil filter","filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23658092","Oil Filter","engine lubrication","engine",["oil filter","engine oil filter","filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["21758906","Filter","service","vehicle",["filter","service filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["21834205","Filter","service","vehicle",["filter","service filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["22988765","Fuel Filter","fuel","engine fuel system",["fuel filter","diesel filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23690622","Filter Kit","service","vehicle",["filter kit","service kit","filters"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23515329","Ventilation Filter","cab","cab ventilation",["ventilation filter","cab filter","pollen filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23515346","Ventilation Filter","cab","cab ventilation",["ventilation filter","cab filter","pollen filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23861998","Fuel Filter","fuel","engine fuel system",["fuel filter","diesel filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23879441","Fuel Filter","fuel","engine fuel system",["fuel filter","diesel filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["21337557","Air Filter","engine intake","engine intake",["air filter","engine air filter","intake filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"],
+["23880105","Fuel Filter","fuel","engine fuel system",["fuel filter","diesel filter"],"Volvo dealer Genuine Volvo Parts brochure 2022"]
 ].map(x=>({id:x[0],name:x[1],system:x[2],position:x[3],keywords:x[4]}));
 const norm=s=>s.toLowerCase().replace(/[^a-z0-9]+/g," ").trim(), tok=s=>norm(s).split(/\s+/).filter(Boolean);
 function run(){const q=document.getElementById("q").value,s=norm(q); if(!s){document.getElementById("interpret").innerHTML='<div class="card warn">Type a part request first.</div>';document.getElementById("results").innerHTML='';return;} let side=/\b(n s|near side|nearside|left hand|lh|left)\b/.test(s)?"left":/\b(o s|off side|offside|right hand|rh|right)\b/.test(s)?"right":null;let pos=/\bfront\b/.test(s)?"front":/\brear\b/.test(s)?"rear":null;
 let concepts=TERMS.filter(t=>[t.canonical,...t.aliases].some(a=>s.includes(norm(a)))).map(t=>({...t,hits:[t.canonical,...t.aliases].filter(a=>s.includes(norm(a)))})); const stop=new Set(["a","an","the","for","of","on","off","from","to","with","and","my","need","want","looking","part","parts","truck","lorry","please","new","one","that","this"]); const raw=tok(q).filter(x=>!stop.has(x)); const inferred=raw.filter(x=>!["front","rear","left","right","near","side","nearside","offside","ns","os","lh","rh"].includes(x)).join(" "); let expanded=new Set(tok([q,...concepts.flatMap(c=>[c.canonical,...c.aliases])].join(" ")));
 let scored=CAT.map(p=>{let n=tok([p.name,p.system,p.position,...p.keywords].join(" ")).reduce((z,x)=>z+(expanded.has(x)?1:0),0);if(side&&p.position.includes(side))n+=4;if(pos&&p.position.includes(pos))n+=3;concepts.forEach(c=>{if(norm(p.name).includes(norm(c.canonical))||p.keywords.some(k=>norm(k)==norm(c.canonical)))n+=6});return {...p,score:n}}).filter(p=>p.score>0).sort((a,b)=>b.score-a.score);
 document.getElementById("interpret").innerHTML='<div class="card"><b>Interpretation</b><div style="margin-top:8px">'+(concepts.length?concepts.map(c=>'<span class="pill">'+c.hits.join(", ")+' → <b>'+c.canonical+'</b></span>').join(""):'<span class="pill">Free-form request → <b>'+ (inferred||q) +'</b></span>')+'</div><div class="small muted" style="margin-top:10px">Side: '+(side||"not specified")+' · Position: '+(pos||"not specified")+'</div></div>'+(concepts.some(c=>c.ambiguous)?'<div class="card warn"><b>Clarification caution:</b> at least one matched workshop term is ambiguous. Treat these as candidates, not a confirmed part.</div>':'');
-document.getElementById("results").innerHTML='<div class="card"><b>Synthetic catalogue candidates</b>'+(scored.length?scored.slice(0,6).map((p,i)=>'<div class="result"><span class="score">#'+(i+1)+' '+p.name+'</span> — '+p.position+'<br><span class="small muted">'+p.system+' · test ID '+p.id+' · relevance '+p.score+'</span></div>').join(""):'<div class="result"><b>Request understood:</b> '+(inferred||q)+'<br><span class="small muted">There is no matching record in the current test catalogue. Parts Assist will not invent a part number. With an authorised catalogue connected, this interpreted request would be used to retrieve chassis-specific candidates.</span></div>')+'</div>'}
+document.getElementById("results").innerHTML='<div class="card"><b>Public Volvo catalogue candidates</b>'+(scored.length?scored.slice(0,6).map((p,i)=>'<div class="result"><span class="score">#'+(i+1)+' '+p.name+'</span> — '+p.position+'<br><span class="small muted">'+p.system+' · Volvo part no. '+p.id+' · relevance '+p.score+'</span></div>').join(""):'<div class="result"><b>Request understood:</b> '+(inferred||q)+'<br><span class="small muted">There is no matching record in the public Volvo catalogue data currently loaded. Parts Assist will not invent a part number. With an authorised catalogue connected, this interpreted request would be used to retrieve chassis-specific candidates.</span></div>')+'</div>'}
 document.getElementById("go").addEventListener("click",run);document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")run()});run();
 </script></body></html>
