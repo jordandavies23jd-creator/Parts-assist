@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parts Assist v0.2</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;background:#f4f6f8;color:#17202a}.wrap{max-width:1050px;margin:auto;padding:28px}.card{background:white;border:1px solid #dfe4ea;border-radius:14px;padding:20px;margin:14px 0;box-shadow:0 2px 8px #0000000a}h1{margin:0 0 6px}.muted{color:#667085}.row{display:flex;gap:10px;flex-wrap:wrap}input,button{font:inherit;padding:12px;border-radius:9px;border:1px solid #cfd6dd}input{flex:1;min-width:260px}button{background:#17202a;color:#fff;cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2f6;margin:3px;font-size:13px}.warn{background:#fff5d6;border-color:#f0cf63}.result{padding:13px;border-top:1px solid #eee}.score{font-weight:700}.small{font-size:13px}</style></head>
+<body><div class="wrap"><h1>Parts Assist v0.2</h1><div class="muted">Workshop-language interpretation + synthetic catalogue. No IMPACT/Fusion connection.</div>
+<div class="card"><div class="row"><input id="q" value="n/s front brake wear lead" placeholder="e.g. n/s rear wear lead, boost pipe off intercooler, sump seal"><button id="go">Interpret & search</button></div><div class="small muted" style="margin-top:10px">UK position language: n/s = left, o/s = right.</div></div><div id="interpret"></div><div id="results"></div><div class="card"><b>Prototype rule:</b> terminology identifies concepts and candidates; it never invents an authoritative part number. PA numbers are synthetic.</div></div>
+<script>
+const TERMS=[
+["brake lining wear sensor","brakes",["brake wear sensor","pad wear sensor","brake pad wear sensor","wear sensor","wear lead","brake wear lead","pad wear lead"],0],
+["automatic slack adjuster","air brakes",["slack adjuster","brake adjuster","asa"],0],
+["brake chamber","air brakes",["air chamber","brake actuator","brake pot"],1],
+["spring brake chamber","air brakes",["spring brake","parking brake chamber","spring brake pot"],1],
+["charge air cooler","intake/boost",["cac","intercooler","charge air cooler"],0],
+["charge air hose/pipe","intake/boost",["boost pipe","boost hose","intercooler pipe","intercooler hose","turbo hose","turbo pipe","charge pipe"],1],
+["turbocharger","intake/boost",["turbo","blower"],0],
+["egr cooler","emissions",["egr cooler","exhaust gas cooler"],0],
+["diesel particulate filter","emissions",["dpf","particulate filter","soot filter"],0],
+["diesel exhaust fluid","emissions",["def","adblue","urea fluid"],0],
+["oil sump","engine lubrication",["sump","oil pan","engine sump"],0],
+["oil sump gasket/seal","engine lubrication",["sump seal","sump gasket","oil pan gasket","oil pan seal"],1],
+["oil cooler seal/gasket","engine lubrication",["oil cooler gasket","oil cooler seal","oil cooler o ring"],1],
+["auxiliary drive belt","engine",["aux belt","auxiliary belt","serpentine belt","accessory belt","ancillary belt","drive belt"],1],
+["anti roll bar link","suspension",["drop link","stabiliser link","sway bar link","link rod","arb link"],0],
+["air spring","suspension",["air bag","airbag","air bellows","suspension bag"],1],
+["track rod end","steering",["tre","tie rod end","steering track rod end"],0],
+["wheel speed sensor","brakes/electrical",["abs sensor","wheel sensor","speed sensor"],1],
+["trailer coupling lines","trailer connections",["suzies","suzie","susie","suzy","suzis","coiled lines","trailer lines"],1],
+["pto","transmission",["power take off","pto unit"],0]
+].map(x=>({canonical:x[0],system:x[1],aliases:x[2],ambiguous:!!x[3]}));
+const CAT=[
+["PA-1001","Brake lining wear sensor","brakes","front left",["wear lead","pad wear sensor","front","left"]],
+["PA-1002","Brake lining wear sensor","brakes","rear left",["wear lead","pad wear sensor","rear","left"]],
+["PA-1003","Brake lining wear sensor","brakes","front right",["wear lead","pad wear sensor","front","right"]],
+["PA-2001","Oil sump gasket","engine lubrication","engine lower",["sump seal","oil pan gasket"]],
+["PA-2101","Oil cooler seal","engine lubrication","oil cooler housing",["oil cooler seal","oil cooler gasket"]],
+["PA-3001","Charge air hose","intake/boost","turbo to charge-air cooler",["boost pipe","turbo pipe","intercooler"]],
+["PA-3002","Charge air hose","intake/boost","charge-air cooler to inlet",["boost pipe","intercooler pipe","inlet"]],
+["PA-4001","Automatic slack adjuster","air brakes","rear axle left",["slack adjuster","brake adjuster","rear","left"]],
+["PA-4101","Spring brake chamber","air brakes","rear axle left",["spring brake chamber","brake pot","rear","left"]],
+["PA-5001","Anti-roll bar link","suspension","front left",["drop link","stabiliser link","front","left"]],
+["PA-6001","Auxiliary drive belt","engine","front of engine",["aux belt","serpentine belt","accessory belt"]],
+["PA-7001","EGR cooler","emissions","engine exhaust recirculation",["egr cooler","exhaust gas cooler"]]
+].map(x=>({id:x[0],name:x[1],system:x[2],position:x[3],keywords:x[4]}));
+const norm=s=>s.toLowerCase().replace(/[^a-z0-9]+/g," ").trim(), tok=s=>norm(s).split(/\s+/).filter(Boolean);
+function run(){const q=document.getElementById("q").value,s=norm(q);let side=/\b(n s|near side|nearside|left hand|lh|left)\b/.test(s)?"left":/\b(o s|off side|offside|right hand|rh|right)\b/.test(s)?"right":null;let pos=/\bfront\b/.test(s)?"front":/\brear\b/.test(s)?"rear":null;
+let concepts=TERMS.filter(t=>t.aliases.some(a=>s.includes(norm(a)))).map(t=>({...t,hits:t.aliases.filter(a=>s.includes(norm(a)))}));let expanded=new Set(tok([q,...concepts.flatMap(c=>[c.canonical,...c.aliases])].join(" ")));
+let scored=CAT.map(p=>{let n=tok([p.name,p.system,p.position,...p.keywords].join(" ")).reduce((z,x)=>z+(expanded.has(x)?1:0),0);if(side&&p.position.includes(side))n+=4;if(pos&&p.position.includes(pos))n+=3;concepts.forEach(c=>{if(norm(p.name).includes(norm(c.canonical))||p.keywords.some(k=>norm(k)==norm(c.canonical)))n+=6});return {...p,score:n}}).filter(p=>p.score>0).sort((a,b)=>b.score-a.score);
+document.getElementById("interpret").innerHTML='<div class="card"><b>Interpretation</b><div style="margin-top:8px">'+(concepts.length?concepts.map(c=>'<span class="pill">'+c.hits.join(", ")+' → <b>'+c.canonical+'</b></span>').join(""):'<span class="muted">No terminology mapping matched.</span>')+'</div><div class="small muted" style="margin-top:10px">Side: '+(side||"not specified")+' · Position: '+(pos||"not specified")+'</div></div>'+(concepts.some(c=>c.ambiguous)?'<div class="card warn"><b>Clarification caution:</b> at least one matched workshop term is ambiguous. Treat these as candidates, not a confirmed part.</div>':'');
+document.getElementById("results").innerHTML='<div class="card"><b>Synthetic catalogue candidates</b>'+(scored.length?scored.slice(0,6).map((p,i)=>'<div class="result"><span class="score">#'+(i+1)+' '+p.name+'</span> — '+p.position+'<br><span class="small muted">'+p.system+' · test ID '+p.id+' · relevance '+p.score+'</span></div>').join(""):'<div class="result">No supported candidate. Ask for more information rather than guessing.</div>')+'</div>'}
+document.getElementById("go").addEventListener("click",run);document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")run()});run();
+</script></body></html>
