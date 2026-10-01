@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parts Assist v0.3</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parts Assist v0.4</title>
 <style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;background:#f4f6f8;color:#17202a}.wrap{max-width:1050px;margin:auto;padding:28px}.card{background:white;border:1px solid #dfe4ea;border-radius:14px;padding:20px;margin:14px 0;box-shadow:0 2px 8px #0000000a}h1{margin:0 0 6px}.muted{color:#667085}.row{display:flex;gap:10px;flex-wrap:wrap}input,button{font:inherit;padding:12px;border-radius:9px;border:1px solid #cfd6dd}input{flex:1;min-width:260px}button{background:#17202a;color:#fff;cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2f6;margin:3px;font-size:13px}.warn{background:#fff5d6;border-color:#f0cf63}.result{padding:13px;border-top:1px solid #eee}.score{font-weight:700}.small{font-size:13px}</style></head>
 <body><div class="wrap"><h1>Parts Assist v0.3</h1><div class="muted">Workshop-language search over publicly published Genuine Volvo Truck parts data. Not chassis-specific and not connected to IMPACT/Fusion.</div>
 <div class="card"><div class="row"><input id="q" value="n/s front brake wear lead" placeholder="e.g. n/s rear wear lead, boost pipe off intercooler, sump seal"><button id="go">Interpret & search</button></div><div class="small muted" style="margin-top:10px">UK position language: n/s = left, o/s = right.</div></div><div id="interpret"></div><div id="results"></div><div class="card"><b>Prototype rule:</b> terminology identifies concepts and candidates; it never invents an authoritative part number. Loaded Volvo numbers come from publicly published Volvo/dealer materials; fitment must still be verified by chassis/VIN in the authorised catalogue.</div></div>
@@ -60,4 +60,21 @@ let scored=CAT.map(p=>{let n=tok([p.name,p.system,p.position,...p.keywords].join
 document.getElementById("interpret").innerHTML='<div class="card"><b>Interpretation</b><div style="margin-top:8px">'+(concepts.length?concepts.map(c=>'<span class="pill">'+c.hits.join(", ")+' → <b>'+c.canonical+'</b></span>').join(""):'<span class="pill">Free-form request → <b>'+ (inferred||q) +'</b></span>')+'</div><div class="small muted" style="margin-top:10px">Side: '+(side||"not specified")+' · Position: '+(pos||"not specified")+'</div></div>'+(concepts.some(c=>c.ambiguous)?'<div class="card warn"><b>Clarification caution:</b> at least one matched workshop term is ambiguous. Treat these as candidates, not a confirmed part.</div>':'');
 document.getElementById("results").innerHTML='<div class="card"><b>Public Volvo catalogue candidates</b>'+(scored.length?scored.slice(0,6).map((p,i)=>'<div class="result"><span class="score">#'+(i+1)+' '+p.name+'</span> — '+p.position+'<br><span class="small muted">'+p.system+' · Volvo part no. '+p.id+' · relevance '+p.score+'</span></div>').join(""):'<div class="result"><b>Request understood:</b> '+(inferred||q)+'<br><span class="small muted">There is no matching record in the public Volvo catalogue data currently loaded. Parts Assist will not invent a part number. With an authorised catalogue connected, this interpreted request would be used to retrieve chassis-specific candidates.</span></div>')+'</div>'}
 document.getElementById("go").addEventListener("click",run);document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")run()});run();
+
+const PUBLIC_CATALOGUE_URL="catalogue-test-v1.json";
+async function loadPublicCatalogue(){
+ try{
+  const r=await fetch(PUBLIC_CATALOGUE_URL,{cache:"no-store"});
+  if(!r.ok) throw new Error("catalogue HTTP "+r.status);
+  const d=await r.json();
+  d.records.forEach(x=>{
+    if(!CAT.some(p=>p.id===x.part_number)){
+      CAT.push({id:x.part_number,name:x.description,system:x.system,position:[x.position,x.application].filter(Boolean).join(" · "),keywords:tok([x.description,x.system,x.position,x.application].join(" "))});
+    }
+  });
+  const note=document.querySelector(".muted");
+  if(note) note.textContent="Workshop-language search over "+d.record_count+" public Volvo reference records. Not VIN-authoritative and not connected to IMPACT/Fusion.";
+ }catch(e){console.warn("Public catalogue load failed",e)}
+}
+loadPublicCatalogue().then(run);
 </script></body></html>
